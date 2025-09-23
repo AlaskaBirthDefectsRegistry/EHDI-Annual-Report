@@ -1,0 +1,992 @@
+---
+title: "EHDI 2023 Annual Report"
+author: "Alaska Early Hearing Detection & Intervention"
+format: html
+prefer-html: true
+editor: visual
+---
+
+## EHDI Variables
+
+From [CDC.com](https://www.cdc.gov/hearing-loss-children/data/ehdi-data.html) Formulas for Receipt of EHDI Services
+
+![Timely EHDI surveillance Measurement](https://www.cdc.gov/hearing-loss-children/media/images/2024/08/349109-A_WEB_EHDI-Infographic_7.jpg)
+
+## EHDI Variables
+
+### **Screened**
+
+**% Screened** = (# Total Screened / \# Total Occurrent Births according to EHDI program) x 100\
+**2022**\
+- AK: 90.4%\
+- National: 95.6%
+
+-   By 30 Days Old - Hearing Screen
+-   date_and_time_of_first_screen + patients_date_of_birth
+-   2023 birth certificate births
+-   cdc_hearing_outcome
+
+### **Diagnosed**
+
+**% Diagnosed** = (# Total Diagnosed / \# Total Not Pass) x 100\
+**2022**\
+- AK: 16.1%\
+- National: 39.9%
+
+-   By 90 Days Old - Diagnose as deaf or hard of hearing (DHH)
+-   first_dx_session_date + patients_date_of_birth
+-   cdc_hearing_outcome
+
+### **EI Enrollment**
+
+**% EI Enrollment** = (# Total Enrolled in EI (Part C and Non-Part C) / \# Total Infants who are DHH) x 100\
+**2022**\
+- AK: 6.3%\
+- National: 40.7%
+
+-   By 180 Days old - Enroll in early intervention
+-   date_of_part_c_enrollment - patients_date_of_birth
+-   date_of_non_part_c_enrollment - patients_date_of_birth
+-   cdc_dx_outcome
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+library(tidyverse)               # contains packages like dplyr
+library(lubridate)               # works with modifying dates easily
+library(janitor)
+library(sf)
+library(viridis)
+library(plotly)
+library(purrr)
+library(DT)
+
+load("//hssancconf/DPH-WCFH_Restricted/Newborn/NBHS/2023 Data/research_dataframe2023.Rda")
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# // Load in HAVRS Year-To-Date file // #
+fp_vs <- file.path("R:\\ResData\\BVS MASTER FILES\\AUTHORIZED RESEARCHERS ONLY\\current\\birth_statistical.sas7bdat")
+bvs <- haven::read_sas(fp_vs) %>% 
+  filter(dob_yr == "2023", 
+         bplace_state == "ALASKA") %>%                                                 # Update Year
+  mutate_all(.funs = as.character) %>% # converting all column to character
+  mutate(dob = ymd(dob))
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Recoding birthcertificate variables
+# Sex
+birth2 <- bvs %>%
+  mutate(sex = ifelse(sex == "N", NA, sex)) %>%
+  mutate(sex = ifelse(sex == "M", "Male", 
+                      ifelse(sex == "F", "Female", sex)))
+
+# Dad last name on BC
+birth3 <- birth2 %>%
+  mutate(flname = ifelse(is.na(flname), "", flname)) %>%
+  mutate(DName = ifelse(flname == "", "None", "Present"))
+
+
+#Smoking use during pregnancy
+birth4 <- birth3 %>%
+  mutate(smoking_status = ifelse(tobac == "Y", "Reported smoking", 
+                                 ifelse(tobac == "N", "Reported not smoking", 
+                                        ifelse(tobac == "U", NA, tobac))))
+
+#Maternal education
+birth5 <- birth4 %>%
+  mutate(M_EDU = ifelse(meduc_code_brg == 2, "12 years",
+                        ifelse(meduc_code_brg == 1, "<12 years",
+                               ifelse(meduc_code_brg == 3, "+12 years", NA))))
+
+
+#Alcohol use during pregnancy
+birth6 <- birth5 %>%
+  mutate(alcohol_use = ifelse(alcohol == "U", NA, 
+                              ifelse(alcohol == "Y", "Reported drinking", 
+                                     ifelse(alcohol == "N", "Reported not drinking", 
+                                            alcohol))))
+
+
+#Maternal age group
+birth7 <- birth6 %>%
+  mutate(mage = ifelse(mage == "999", NA, mage))
+
+birth7$M_grp <-cut(as.numeric(birth7$mage),c(12,20,25,30,35,40,65),
+                   include.lowest = T,right=F,
+                   labels = c("12-19","20-24","25-29","30-34","35-39","40+")) 
+
+
+#Marital Status
+birth8 <- birth7 %>%
+  mutate(marital_status = ifelse(marn == "U", NA,
+                                 ifelse(marn == "Y", "Married",
+                                        ifelse(marn == "N", "Unmarried", marn))))
+
+# #Medicaid eligible
+# birth9 <- birth8 %>%
+#   mutate(eligible = ifelse(medicaid_eligible == "Y", "Medicaid",
+#              ifelse(medicaid_eligible == "N", "Non-Medicaid", NA)))
+
+#Medicaid eligible
+birth9 <- birth8 %>%
+  mutate(eligible = ifelse(pay == "MEDICAID" |
+                             wic == "Y", "Medicaid", "Non-Medicaid"))
+
+#chew use during pregnancy
+birth10 <- birth9 %>%
+  mutate(chewing_use = ifelse(snuff == "Y", "Reported chewing", 
+                              ifelse(snuff == "N","Reported not chewing", NA)))
+
+#Tobacco or ETOH during pregnancy
+birth11 <- birth10 %>%
+  mutate(substance = case_when(
+  smoking_status == "Reported smoking" | 
+  alcohol_use == "Reported drinking" | 
+  chewing_use == "Reported chewing" ~ "Yes",
+  TRUE ~ "No"
+))
+
+#Birth Weight
+birth12 <- birth11 
+
+birth12$BWT_G <- cut(as.numeric(birth12$bwg),c(0,2500,9000),
+                     include.lowest = T,
+                     right=F,
+                     labels = c("<2500g","2500+g")) 
+
+
+#Race
+birth13 <- birth12 %>%
+  mutate(M_rce = ifelse(mrace_bridged == "AMERICAN INDIAN/ALASKAN NATIVE" |
+                          mrace_bridged == "BRIDGED AMERICAN INDIAN/ALASKAN NATIVE", 
+                        "Alaska Native/American Indian", 
+                        ifelse(mrace_bridged == "NATIVE HAWAIIAN" |
+                                 mrace_bridged == "VIETNAMESE" |
+                                 mrace_bridged == "ASIAN INDIAN" |
+                                 mrace_bridged == "BRIDGED ASIAN AND PACIFIC ISLANDER" |
+                                 mrace_bridged == "CHINESE" |
+                                 mrace_bridged == "JAPANESE" |
+                                 mrace_bridged == "SAMOAN" |
+                                 mrace_bridged == "FILIPINO" |
+                                 mrace_bridged == "KOREAN" |
+                                 mrace_bridged == "OTHER ASIAN", 
+                               "Asian/Pacific Islander", 
+                               ifelse(mrace_bridged == "BRIDGED WHITE" |
+                                        mrace_bridged == "WHITE" |
+                                        mrace_bridged == "BRIDGED WHITE", 
+                                      "White", 
+                                      ifelse(mrace_bridged == "BLACK" |
+                                               mrace_bridged == "BRIDGED BLACK", 
+                                             "Black", NA)))))
+
+#Hispanic
+birth14 <- birth13 %>%
+  mutate(M_eth = ifelse(mhispanic == "H", "Hispanic",                           # This is "H" now (not "Y")?
+                        ifelse(mhispanic == "N", "Not Hispanic", NA)))
+
+
+birth15 <- birth14 %>%
+  mutate(PH_REGION = ifelse(res_phregn == "ANCHORAGE REGION", "Anchorage", 
+                            ifelse(res_phregn == "MATANUSKA-SUSITNA REGION", 
+                                   "Mat-Su", 
+                                   ifelse(res_phregn == "INTERIOR REGION", "Interior", 
+                                          ifelse(res_phregn == "SOUTHEAST REGION", "Southeast", 
+                                                 ifelse(res_phregn == "NORTHERN REGION", "Northern", 
+                                                        ifelse(res_phregn == "GULF COAST REGION", "Gulf Coast", 
+                                                               ifelse(res_phregn == "SOUTHWEST REGION", "Southwest",
+                                                                      NA)))))))) 
+
+
+birth15b <- birth15 %>%
+  select(birth_cert, sex, eligible, M_rce, M_eth, dob, M_EDU, marital_status, 
+         BWT_G, M_grp, smoking_status, DName, res_bhregn, PH_REGION, 
+         bplace_city) %>%
+  rename("BC" = birth_cert,
+         "occurrence_census" = bplace_city)
+
+
+
+birth15bb <- birth15 %>%
+  select(birth_cert, sex, fname, mname, lname, mfname, mmname, mlname, mmaidn, 
+         ffname, fmname, flname, bplace_fac, dob, mdob, res_city, 
+         bplace_city) %>%
+  rename("BC" = birth_cert, 
+         "occurrence_census" = bplace_city, 
+         "mom_residence_village" = res_city, 
+         "facility_name" = bplace_fac, 
+         "dad_last_name" = flname, 
+         "dad_middle_name" = fmname,
+         "dad_first_name" = ffname, 
+         "mom_first_name" = mfname,
+         "mom_middle_name" = mmname,
+         "mom_last_name" = mlname,
+         "mom_maiden_name" = mmaidn,
+         "child_first_name" = fname,
+         "child_middle_name" = mname,
+         "child_last_name" = lname)
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+res_data_birth <- res_data_2023_birth    # Update data
+
+# Creating date of first screen variable
+res_data_birth_2 <- res_data_birth %>%
+  #distinct(bc, date_and_time_of_first_screen, patients_date_of_birth, ) %>%
+  mutate(date_of_first_screen = date(mdy_hms(date_and_time_of_first_screen))) %>%
+# Creating screening age variable
+  mutate(age_at_first_screen_days = (date_of_first_screen - patients_date_of_birth)) %>%
+  mutate(age_at_first_screen_days = parse_integer(as.character(age_at_first_screen_days))) %>%
+# Creating screen within 1 month boolean
+  mutate(screen_within_30_days = ifelse(age_at_first_screen_days <= 30, 1, 0)) %>%
+# Changing NA values to 0
+  mutate(screen_within_30_days = ifelse(is.na(screen_within_30_days), 0, screen_within_30_days)) %>%
+  mutate(first_dx_session_date = date(mdy(first_dx_session_date))) %>%
+# Creating screening age variable
+  mutate(first_dx_session_days = (first_dx_session_date - patients_date_of_birth)) %>%
+  mutate(first_dx_session_days = parse_integer(as.character(first_dx_session_days))) %>%
+# Creating diagnosed within 3 month boolean
+  mutate(diagnosis_within_90_days = ifelse(first_dx_session_days <= 90, 1, 0)) %>%
+# Creating a "Not Pass" boolean indicator variable
+  mutate(screen_not_pass = ifelse(cdc_hearing_outcome == "Screened - Not Pass", 1, 0)) %>%
+# Creating an Early intervention boolean within 6-months boolean
+  mutate(date_of_part_c_enrollment = date(mdy(date_of_part_c_enrollment)),
+         date_of_non_part_c_enrollment = date(mdy(date_of_non_part_c_enrollment))) %>%
+  mutate(age_at_ei_part_c_days = (date_of_part_c_enrollment - patients_date_of_birth)) %>%
+  mutate(age_at_ei_part_c_days = as.numeric(parse_integer(as.character(age_at_ei_part_c_days)))) %>%
+  mutate(age_at_ei_part_non_c_days = (date_of_non_part_c_enrollment - patients_date_of_birth)) %>%
+  mutate(age_at_ei_part_non_c_days = parse_integer(as.character(age_at_ei_part_non_c_days))) %>%
+  mutate(ei_before_6m = ifelse(age_at_ei_part_c_days <= 180 
+                               | age_at_ei_part_non_c_days <= 180, 1, 0)) %>%
+# Creating a DHH boolean variable
+  mutate(dhh = ifelse(cdc_dx_outcome == "Diagnosis - Hearing Loss/Deaf/Hard of Hearing", 1, 0)) %>%
+# Changing NA values to 0
+  mutate(diagnosis_within_90_days = ifelse(is.na(diagnosis_within_90_days), 0, diagnosis_within_90_days)) %>%
+  mutate(ei_before_6m = ifelse(is.na(ei_before_6m), 0, ei_before_6m)) %>%
+# Replacing "" with NA
+  mutate(across(where(is.character), ~na_if(., "")))
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+screen_count <- res_data_birth_2 %>%
+  distinct(bc, screen_within_30_days) %>% 
+  summarise(count_screen_within_30_days = sum(screen_within_30_days))
+
+screen_sum <- sum(res_data_birth_2$screen_within_30_days)
+ak_birth_total <- nrow(bvs)
+prct_scrn_1mo <- round((sum(res_data_birth_2$screen_within_30_days)/nrow(bvs))*100, 2)
+
+
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+
+library(dplyr)
+library(ggplot2)
+
+# Define the previous data points
+prct_scrn_1mo2022 <- 90.4 # 2022 data                  # Update this
+
+
+# Create the table
+screening_data <- data.frame(
+  year = c(2022, 2023),
+  screening_percent = c(prct_scrn_1mo2022, prct_scrn_1mo)
+)
+
+# Create the trend plot
+ggplot(screening_data, aes(x = year, y = screening_percent)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  labs(
+    title = "Percent of Alaskan Newborns Screened Before 1-Month of Age",
+    subtitle = "In state Born Screening Rates: 2022-2023",     #Update
+    x = "Year",
+    y = "Percent Screened (%)",
+    caption = "2022 National Screening Rate: 95.6%"           #Update
+  ) +
+  scale_x_continuous(breaks = c(2022, 2023)) +
+  scale_y_continuous(limits = c(0, (max(screening_data$screening_percent)+5))) + #, breaks = seq(89, 93, 1)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12, color = "gray60"),
+    axis.title = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+```
+
+**Total screened** - `r screen_count`
+
+**Total in-state Alaska births** - `r ak_birth_total`
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+diag_sum <- sum(res_data_birth_2$diagnosis_within_90_days)
+screen_not_pass_sum <- sum(res_data_birth_2$screen_not_pass)
+prct_diag_3mo <- round((sum(res_data_birth_2$diagnosis_within_90_days)/sum(res_data_birth_2$screen_not_pass))*100, 2)
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Define the previous data points
+prct_diag_3mo2022 <- 16.1 # 2022 data                  # Update this
+
+
+# Create the table
+diagnosis_data <- data.frame(
+  year = c(2022, 2023),                                # Update this
+  diag_percent = c(prct_diag_3mo2022, 
+                        prct_diag_3mo)                 # Update this
+)
+
+# Create the trend plot
+ggplot(diagnosis_data, aes(x = year, y = diag_percent)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  labs(
+    title = "Percent of Alaskan Newborns Diagnosed Before 3-Months of Age",
+    subtitle = "In state Born Diagnosis Rates: 2022-2023",     #Update
+    x = "Year",
+    y = "Percent Diagnosed (%)",
+    caption = "2022 National Diagnosis Rate: 39.9%"           #Update
+  ) +
+  scale_x_continuous(breaks = c(2022, 2023)) +
+  scale_y_continuous(limits = c(0, (max(diagnosis_data$diag_percent)+5))) +#, breaks = seq(89, 93, 1)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12, color = "gray60"),
+    axis.title = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+```
+
+**Total diagnosed before 3-months** - `r diag_sum`
+
+**Total In-State Alaska births who did not pass hearing screen** - `r screen_not_pass_sum`
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+enroll_sum <- sum(res_data_birth_2$ei_before_6m)
+dhh_sum <- sum(res_data_birth_2$dhh)
+prct_enroll_6mo <- round((sum(res_data_birth_2$ei_before_6m)/sum(res_data_birth_2$dhh))*100, 2)
+
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Define the previous data points
+prct_enroll_6mo2022 <- 6.3 # 2022 data                  # Update this
+
+
+# Create the table
+enroll_data <- data.frame(
+  year = c(2022, 2023),                                # Update this
+  enroll_percent = c(prct_enroll_6mo2022, 
+                        prct_enroll_6mo)                 # Update this
+)
+
+# Create the trend plot
+ggplot(enroll_data, aes(x = year, y = enroll_percent)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  labs(
+    title = "Percent of Alaskan Newborns Enrolled Before 6-Months of Age",
+    subtitle = "In state Born Enrollment Rates: 2022-2023",     #Update
+    x = "Year",
+    y = "Percent Enrolled (%)",
+    caption = "2022 National Enrollment Rate: 40.7%"           #Update
+  ) +
+  scale_x_continuous(breaks = c(2022, 2023)) +
+  scale_y_continuous(limits = c(0, (max(enroll_data$enroll_percent)+5))) +#, breaks = seq(89, 93, 1)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 14, face = "bold"),
+    plot.subtitle = element_text(size = 12, color = "gray60"),
+    axis.title = element_text(size = 11),
+    panel.grid.minor = element_blank()
+  )
+```
+
+**Total enrolled before 6-months** - `r enroll_sum`
+
+**Total In-State Alaska births diagnoesd as deaf or hear of hearing (DHH)** - `r dhh_sum`
+
+## Geographic Distribution
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Creating bvs variable vector
+bvs_vec <- birth15 %>% 
+  select(bplace, M_grp:PH_REGION) %>% 
+  select(-chewing_use) %>% 
+  colnames()
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Creating a "lite" weight res_data_birth_2: res_data_birth_2_lite
+res_data_birth_2_lite <- res_data_birth_2 %>%
+  select(bc, date_of_first_screen:dhh)
+
+# Joining Birth Certificate data with EHDI data
+birth16 <- birth15 %>%
+  left_join(res_data_birth_2_lite, by = c("birth_cert" = "bc")) %>%
+  # Changing NA values to 0
+  mutate(diagnosis_within_90_days = ifelse(is.na(diagnosis_within_90_days), 0, diagnosis_within_90_days)) %>%
+  mutate(ei_before_6m = ifelse(is.na(ei_before_6m), 0, ei_before_6m)) %>%
+  mutate(dhh = ifelse(is.na(dhh), 0, dhh))
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 <- map_dfr(bvs_vec, ~ {
+  # The `across(all_of(.x))` syntax is crucial here. It allows
+  # you to group by a column name that is stored in a variable.
+  # Without this, the code would not work correctly.
+  birth16 %>%
+    group_by(across(all_of(.x))) %>%
+    summarise(
+      percent_scrn_30_days = (sum(screen_within_30_days, na.rm = TRUE)/
+                                n())*100,
+      num = sum(screen_within_30_days, na.rm = TRUE),
+      demon = n(),
+      .groups = "drop" # This removes the grouping, which is good practice
+    )  %>%
+    # Add a column to identify the variable used for grouping
+    rename(variable_value = 1) %>% 
+    mutate(variable_name = .x) 
+})
+
+# Changing NA values in variable_value to "Unknown"
+results_scrn30 <- results_scrn30 %>%
+    mutate(variable_value = ifelse(is.na(variable_value), 
+                                   "Unknown", variable_value))
+
+tables_scrn30 <- map(bvs_vec, ~ { 
+  results_scrn30 %>%
+    filter(variable_name == .x) %>%
+  filter(!is.na(percent_scrn_30_days)) %>%
+    arrange(desc(percent_scrn_30_days)) %>%
+  mutate(percent_scrn_30_days = paste0(round(percent_scrn_30_days, 2), "%")) %>%
+    htmlTable::htmlTable(rnames = FALSE)
+})
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+
+geo_results_scrn30 <- results_scrn30 %>%
+  filter(variable_name == "PH_REGION") %>%
+  filter(variable_value != "Unknown") %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2))
+
+# Importing ak_sf
+ak_sf <- st_read(dsn="R:\\ABDR\\Analysis_New\\ABDR_CASECONF\\shapefiles",
+                 layer="PHR",
+                 quiet = TRUE) %>%
+  mutate(XAPHR_LBL = ifelse(XAPHR_LBL == "Anchorage Municipality", "Anchorage", 
+                ifelse(XAPHR_LBL == "Matanuska-Susitna Borough",  "Mat-Su",XAPHR_LBL)))
+
+ # Joining ak_sf to p043_em2b
+ak_sf_em <- geo_results_scrn30 %>% 
+  left_join(ak_sf, by = c("variable_value" = "XAPHR_LBL")) %>%
+        mutate(hover = paste("Region:", variable_value,
+                             "<br>Screening Rate:", 
+                             percent_scrn_30_days, "%",
+                             "<br>Screened:", num,
+                             "<br>Alaskan Born:", demon))
+
+# Creating a ggplot for ak_sf_em data
+scrn_map <- ggplot(data = ak_sf_em, 
+             aes(geometry = geometry, 
+                 fill = percent_scrn_30_days,
+                 text = paste("Region:", variable_value,
+                              "<br>Screening Rate:", paste0(percent_scrn_30_days, "%"),
+                            "<br>Screened:", num,
+                            "<br>Alaskan Born:", demon))) +
+        geom_sf() +
+        viridis::scale_fill_viridis(option = "cividis", direction = -1) +
+        theme(axis.text.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks = element_blank(),
+              panel.background = element_rect(fill = "white", 
+                                              color = "white"),
+              legend.position = "none") +
+        ggtitle("Percent Screened Before 1 Month of Age by Public Health Region")
+
+scrn_map_ly <- ggplotly(scrn_map, 
+         tooltip = c("text", "size")) %>%  
+  layout(xaxis = list(autorange = TRUE),
+         yaxis = list(autorange = TRUE))
+scrn_map_ly
+  
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 <- map_dfr(bvs_vec, ~ {
+  # The `across(all_of(.x))` syntax is crucial here. It allows
+  # you to group by a column name that is stored in a variable.
+  # Without this, the code would not work correctly.
+  birth16 %>%
+    group_by(across(all_of(.x))) %>%
+    summarise(
+      percent_scrn_30_days = (sum(screen_within_30_days, na.rm = TRUE)/
+                                n())*100,
+      num = sum(screen_within_30_days, na.rm = TRUE),
+      demon = n(),
+      .groups = "drop" # This removes the grouping, which is good practice
+    )  %>%
+    # Add a column to identify the variable used for grouping
+    rename(variable_value = 1) %>% 
+    mutate(variable_name = .x) 
+})
+
+# Changing NA values in variable_value to "Unknown"
+results_scrn30 <- results_scrn30 %>%
+    mutate(variable_value = ifelse(is.na(variable_value), 
+                                   "Unknown", variable_value))
+
+tables_scrn30 <- map(bvs_vec, ~ { 
+  results_scrn30 %>%
+    filter(variable_name == .x) %>%
+  filter(!is.na(percent_scrn_30_days)) %>%
+    arrange(desc(percent_scrn_30_days)) %>%
+  mutate(percent_scrn_30_days = paste0(round(percent_scrn_30_days, 2), "%")) %>%
+    htmlTable::htmlTable(rnames = FALSE)
+})
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+results_scrn30 %>% 
+  filter(variable_name == 'PH_REGION') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Region", "Screened Percent", "Screened Count", "AK Births"))
+
+```
+
+## Demographic Variables
+
+## Place of Birth
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'bplace') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Place of Birth", "Screened Percent", "Screened Count", "AK Births")#, caption = "Place of Birth"
+          )
+```
+
+## Medicaid Eligible
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'eligible') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Medicaid Status", "Screened Percent", "Screened Count", "AK Births")
+          )
+```
+
+## Maternal Age
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'M_grp') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Maternal Age Group", "Screened Percent", "Screened Count", "AK Births")
+          )
+```
+
+## Maternal Race
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'M_rce') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Maternal Race", "Screened Percent", "Screened Count", "AK Births")
+          )
+```
+
+## Marital Status
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'marital_status') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Marital Status", "Screened Percent", "Screened Count", "AK Births")
+          )
+
+```
+
+## Substance
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+results_scrn30 %>% 
+  filter(variable_name == 'substance') %>% 
+  select(-variable_name) %>%
+  mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+datatable(, 
+          #container = tables_scrn30[[9]], 
+          options = list(pageLength = nrow(results_scrn30),
+                        dom = 't',
+                        initComplete = JS(
+                          "function(settings, json) {",
+                          "$('.dataTables_wrapper tfoot').css({'text-align': 'left', 'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper tfoot td').css({'padding-left': '0', 'margin-left': '0', 'text-align': 'left'});",
+                          "$('.dataTables_wrapper tfoot tr').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('tfoot').css({'padding-left': '0', 'margin-left': '0'});",
+                          "$('.dataTables_wrapper thead th').css('text-align', 'left');",
+                          "}"
+                        )),
+          rownames = F, 
+          colnames = c("Substance Use", "Screened Percent", "Screened Count", "AK Births")
+          )
+```
+
+## Prevalence Estimate of DHH in Alaska
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+# Creating hearing data dataframe
+outcome_cat <- res_data_birth_2 %>% 
+  filter(screen_not_pass == 1) %>%
+  group_by(cdc_dx_outcome) %>%
+  summarise(Total = n()) %>%
+  filter(!is.na(cdc_dx_outcome)) %>%
+  select(cdc_dx_outcome)
+
+
+outcome_count <- res_data_birth_2 %>% 
+   filter(screen_not_pass == 1) %>%
+  group_by(cdc_dx_outcome) %>%
+  summarise(Count = n()) %>%
+  filter(!is.na(cdc_dx_outcome)) %>%
+  select(Count)
+
+hearing_data <- data.frame(
+  Category = c(outcome_cat), 
+  Count = c(outcome_count)
+)
+
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+
+# Create shorter labels for better visualization
+hearing_data <- hearing_data %>%
+  rename("Category" = cdc_dx_outcome) %>%
+  mutate(
+    Short_Label = case_when(
+      Category == "Diagnosis - Hearing Loss/Deaf/Hard of Hearing" ~ "Hearing Loss/Deaf/HoH",
+      Category == "Diagnosis - No Hearing Loss" ~ "No Hearing Loss",
+      Category == "Diagnosis - Transient Hearing Loss" ~ "Transient Hearing Loss",
+      Category == "No Diagnosis - Audiologic Diagnosis in Process (Awaiting Diagnosis)" ~ "Awaiting Diagnosis",
+      Category == "No Diagnosis - Infant Died" ~ "Infant Died",
+      Category == "No Diagnosis - Moved out of Jurisdiction" ~ "Moved out of Jurisdiction",
+      Category == "No Diagnosis - Non-Resident" ~ "Non-Resident",
+      Category == "No Diagnosis - Parents/Family Contacted but Unresponsive" ~ "Family Unresponsive",
+      Category == "No Diagnosis - Parents/Family Declined Services" ~ "Family Declined Services",
+      Category == "No Diagnosis - Unable to Contact" ~ "Unable to Contact",
+      Category == "No Diagnosis - Unable to Receive Diagnostic Testing due to Medical Reasons" ~ "Medical Reasons",
+      Category == "No Diagnosis - Unknown" ~ "Unknown",
+      TRUE ~ "Other"  # catch-all for any unmatched categories
+    )
+  )
+
+# Calculate percentages
+hearing_data <- hearing_data %>%
+  mutate(
+    Percentage = round(Count / sum(Count) * 100, 1),
+    Label = paste0(Short_Label, "\n", Count, " (", Percentage, "%)")
+  )
+
+# Create color palette - using distinct colors for better differentiation
+colors <- c("#FF6B6B", "#4ECDC4", "#45B7D1", "#96CEB4", "#FFEAA7", 
+           "#DDA0DD", "#98D8C8", "#F7DC6F", "#BB8FCE", "#85C1E9",
+           "#F8C471", "#CD6155")
+
+# Create the doughnut plot
+p <- ggplot(hearing_data, aes(x = 2, y = Count, fill = Short_Label)) +
+  geom_bar(stat = "identity", width = 1, color = "white", size = 0.5) +
+  coord_polar(theta = "y", start = 0) +
+  xlim(0.5, 2.5) +  # This creates the hole in the middle
+  scale_fill_manual(values = colors) +
+  theme_void() +
+  theme(
+    legend.position = "right",
+    legend.title = element_blank(),
+    legend.text = element_text(size = 9),
+    plot.title = element_text(hjust = 0.5, size = 14, face = "bold"),
+    plot.subtitle = element_text(hjust = 0.5, size = 11, color = "gray60")
+  ) +
+  labs(
+    title = "Distribution of Hearing Diagnosis Outcomes",
+    subtitle = paste("Total Cases:", sum(hearing_data$Count))
+  )
+
+# Display the plot
+print(p)
+
+# # Print summary statistics
+# cat("\nSummary Statistics:\n")
+# cat("==================\n")
+# cat("Total cases:", sum(hearing_data$Count), "\n")
+# cat("Number of categories:", nrow(hearing_data), "\n")
+# cat("\nTop 3 categories by count:\n")
+# top3 <- hearing_data[order(-hearing_data$Count), ][1:3, ]
+# for(i in 1:3) {
+#   cat(paste0(i, ". ", top3$Short_Label[i], ": ", top3$Count[i], 
+#              " (", top3$Percentage[i], "%)\n"))
+#}
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+
+hearing_data %>%
+  select(Short_Label, Count, Percentage) %>%
+  datatable(data = ., rownames = FALSE)
+  
+```
+
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
+
+
+hearing_data2 <- hearing_data %>%
+  select(Short_Label, Count, Percentage) %>%
+  mutate(screen_result = ifelse(
+    Short_Label == "Hearing Loss/Deaf/HoH" |
+      Short_Label == "No Hearing Loss" |
+        Short_Label == "Transient Hearing Loss",
+    "Known", "Unknown"
+    ))
+
+
+Total <- hearing_data %>% 
+  summarize(total_n = sum(Count)) %>%
+  pull(total_n)
+
+deaf <- hearing_data %>% 
+  filter(Short_Label == "Hearing Loss/Deaf/HoH") %>%
+  pull(Count)
+
+not_deaf <- hearing_data %>% 
+  filter(Short_Label %in% c("No Hearing Loss", "Transient Hearing Loss")) %>%
+  summarise(not_deaf_count = sum(Count)) %>%
+  pull(not_deaf_count)
+
+screen_results <- deaf + not_deaf
+
+deaf_to_screen_rate <- round((deaf/screen_results)*100, 2)
+
+screen_no_results <- hearing_data2 %>%
+  filter(screen_result == "Unknown") %>%
+  summarise(screen_no_results_n = sum(Count)) %>%
+  pull(screen_no_results_n)
+
+estimated_screen_results <- screen_no_results*(deaf_to_screen_rate/100)
+
+# Calculating any diagnosed dhh that were not screened
+no_screen_dhh <- res_data_birth_2 %>% 
+  filter(screen_not_pass == 0) %>%
+  filter(cdc_dx_outcome == "Diagnosis - Hearing Loss/Deaf/Hard of Hearing") %>%
+  summarise(Total = n()) %>%
+  pull(Total)
+  
+
+total_dhh <- deaf + 
+  estimated_screen_results + 
+  no_screen_dhh
+
+ak_dhh10000 <- round(total_dhh/nrow(bvs)*10000, 2)
+  
+
+```
+
+## Deaf or Hard of Hearing Prevalence
+
+Out of the `r Total` newborns with a failed hearing screen, only `r screen_results` have a known hearing evaluation. The number of newborns diagnosed as DHH after failing a hearing screen is `r deaf` (out of `r screen_results` with a hearing evaluation). The proportion of DHH among screened newborns is `r paste0(deaf_to_screen_rate, "%")` `r deaf` / `r screen_results`. The number of newborns with a failed hearing screen that do not have a diagnosis is `r screen_no_results`. The number of DHH without a documented hearing screen is `r no_screen_dhh`.
+
+Assuming a consistent rate of DHH among screened newborns, the prevalence estimate for DHH for the year is `r ak_dhh10000` per 10,000 live Alaskan births.
