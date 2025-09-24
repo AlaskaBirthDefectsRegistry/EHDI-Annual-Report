@@ -1,0 +1,114 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "EHDI Annual Report",
+    "section": "",
+    "text": "2023"
+  },
+  {
+    "objectID": "index.html#ehdi-annual-reports",
+    "href": "index.html#ehdi-annual-reports",
+    "title": "EHDI Annual Report",
+    "section": "",
+    "text": "2023"
+  },
+  {
+    "objectID": "about.html",
+    "href": "about.html",
+    "title": "About",
+    "section": "",
+    "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html",
+    "href": "EHDI_Annual_Report_2023.html",
+    "title": "EHDI 2023 Annual Report",
+    "section": "",
+    "text": "From CDC.com Formulas for Receipt of EHDI Services\n\n\n\nTimely EHDI surveillance Measurement"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#ehdi-variables",
+    "href": "EHDI_Annual_Report_2023.html#ehdi-variables",
+    "title": "EHDI 2023 Annual Report",
+    "section": "",
+    "text": "From CDC.com Formulas for Receipt of EHDI Services\n\n\n\nTimely EHDI surveillance Measurement"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#ehdi-variables-1",
+    "href": "EHDI_Annual_Report_2023.html#ehdi-variables-1",
+    "title": "EHDI 2023 Annual Report",
+    "section": "EHDI Variables",
+    "text": "EHDI Variables\n\nScreened\n% Screened = (# Total Screened / # Total Occurrent Births according to EHDI program) x 100\n2022\n- AK: 90.4%\n- National: 95.6%\n\nBy 30 Days Old - Hearing Screen\ndate_and_time_of_first_screen + patients_date_of_birth\n2023 birth certificate births\ncdc_hearing_outcome\n\n\n\nDiagnosed\n% Diagnosed = (# Total Diagnosed / # Total Not Pass) x 100\n2022\n- AK: 16.1%\n- National: 39.9%\n\nBy 90 Days Old - Diagnose as deaf or hard of hearing (DHH)\nfirst_dx_session_date + patients_date_of_birth\ncdc_hearing_outcome\n\n\n\nEI Enrollment\n% EI Enrollment = (# Total Enrolled in EI (Part C and Non-Part C) / # Total Infants who are DHH) x 100\n2022\n- AK: 6.3%\n- National: 40.7%\n\nBy 180 Days old - Enroll in early intervention\ndate_of_part_c_enrollment - patients_date_of_birth\ndate_of_non_part_c_enrollment - patients_date_of_birth\ncdc_dx_outcome\n\n\n\n\n\n\n\n\n\n\nTotal screened - 8186\nTotal in-state Alaska births - 8957\n\n\n\n\n\n\n\n\n\nTotal diagnosed before 3-months - 25\nTotal In-State Alaska births who did not pass hearing screen - 192\n\n\n\n\n\n\n\n\n\nTotal enrolled before 6-months - 3\nTotal In-State Alaska births diagnoesd as deaf or hear of hearing (DHH) - 8"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#geographic-distribution",
+    "href": "EHDI_Annual_Report_2023.html#geographic-distribution",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Geographic Distribution",
+    "text": "Geographic Distribution"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#demographic-variables",
+    "href": "EHDI_Annual_Report_2023.html#demographic-variables",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Demographic Variables",
+    "text": "Demographic Variables"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#place-of-birth",
+    "href": "EHDI_Annual_Report_2023.html#place-of-birth",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Place of Birth",
+    "text": "Place of Birth"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#medicaid-eligible",
+    "href": "EHDI_Annual_Report_2023.html#medicaid-eligible",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Medicaid Eligible",
+    "text": "Medicaid Eligible"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#maternal-age",
+    "href": "EHDI_Annual_Report_2023.html#maternal-age",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Maternal Age",
+    "text": "Maternal Age"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#maternal-race",
+    "href": "EHDI_Annual_Report_2023.html#maternal-race",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Maternal Race",
+    "text": "Maternal Race"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#marital-status",
+    "href": "EHDI_Annual_Report_2023.html#marital-status",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Marital Status",
+    "text": "Marital Status"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#substance",
+    "href": "EHDI_Annual_Report_2023.html#substance",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Substance",
+    "text": "Substance"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#prevalence-estimate-of-dhh-in-alaska",
+    "href": "EHDI_Annual_Report_2023.html#prevalence-estimate-of-dhh-in-alaska",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Prevalence Estimate of DHH in Alaska",
+    "text": "Prevalence Estimate of DHH in Alaska"
+  },
+  {
+    "objectID": "EHDI_Annual_Report_2023.html#deaf-or-hard-of-hearing-prevalence",
+    "href": "EHDI_Annual_Report_2023.html#deaf-or-hard-of-hearing-prevalence",
+    "title": "EHDI 2023 Annual Report",
+    "section": "Deaf or Hard of Hearing Prevalence",
+    "text": "Deaf or Hard of Hearing Prevalence\nOut of the 192 newborns with a failed hearing screen, only 29 have a known hearing evaluation. The number of newborns diagnosed as DHH after failing a hearing screen is 7 (out of 29 with a hearing evaluation). The proportion of DHH among screened newborns is 24.14% 7 / 29. The number of newborns with a failed hearing screen that do not have a diagnosis is 163. The number of DHH without a documented hearing screen is 1.\nAssuming a consistent rate of DHH among screened newborns, the prevalence estimate for DHH for the year is 52.86 per 10,000 live Alaskan births."
+  }
+]
