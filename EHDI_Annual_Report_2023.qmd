@@ -617,6 +617,7 @@ results_scrn30 %>%
   filter(variable_name == 'PH_REGION') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+  mutate(num = ifelse(num <= 5, "-", num)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -648,6 +649,8 @@ results_scrn30 %>%
   filter(variable_name == 'bplace') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+  mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -677,6 +680,8 @@ results_scrn30 %>%
   filter(variable_name == 'eligible') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+   mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -706,6 +711,8 @@ results_scrn30 %>%
   filter(variable_name == 'M_grp') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+   mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -735,6 +742,8 @@ results_scrn30 %>%
   filter(variable_name == 'M_rce') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+   mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -764,6 +773,8 @@ results_scrn30 %>%
   filter(variable_name == 'marital_status') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+   mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -794,6 +805,8 @@ results_scrn30 %>%
   filter(variable_name == 'substance') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
+   mutate(num = ifelse(num <= 5, "-", num), 
+         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -924,6 +937,7 @@ print(p)
 
 hearing_data %>%
   select(Short_Label, Count, Percentage) %>%
+   mutate(Count = ifelse(Count <= 5, "-", Count)) %>%
   datatable(data = ., rownames = FALSE)
   
 ```
