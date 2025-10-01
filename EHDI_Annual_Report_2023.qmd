@@ -1,48 +1,51 @@
 ---
-title: "EHDI 2023 Annual Report"
-author: "Alaska Early Hearing Detection & Intervention"
-format: html
-prefer-html: true
-editor: visual
+title: "EHDI 2023 Annual Report" 
+author: "Alaska Early Hearing Detection & Intervention" 
+format: html 
+prefer-html: true 
+editor: visual 
 ---
 
 ## EHDI Variables
 
 From [CDC.com](https://www.cdc.gov/hearing-loss-children/data/ehdi-data.html) Formulas for Receipt of EHDI Services
 
-![Timely EHDI surveillance Measurement](https://www.cdc.gov/hearing-loss-children/media/images/2024/08/349109-A_WEB_EHDI-Infographic_7.jpg)
+![Timely EHDI surveillance Measurement](https://www.cdc.gov/hearing-loss-children/media/images/2024/08/349109-A_WEB_EHDI-Infographic_7.jpg){alt="Timely EHDI surveillance Measurement"}
 
-## EHDI Variables
+## EHDI Metrics
 
-### **Screened**
+### **Hearing Screening (By 1-month)**
 
-**% Screened** = (# Total Screened / \# Total Occurrent Births according to EHDI program) x 100\
-**2022**\
-- AK: 90.4%\
-- National: 95.6%
+CDC Definition
+
+**% Screened** = (# Total Screened / \# Total Occurrent Births according to EHDI program) x 100
+
+OZ Variables
 
 -   By 30 Days Old - Hearing Screen
 -   date_and_time_of_first_screen + patients_date_of_birth
 -   2023 birth certificate births
 -   cdc_hearing_outcome
 
-### **Diagnosed**
+### **Diagnostic Evaluation**
 
-**% Diagnosed** = (# Total Diagnosed / \# Total Not Pass) x 100\
-**2022**\
-- AK: 16.1%\
-- National: 39.9%
+CDC Definition
+
+**% Diagnosed** = (# Total Diagnosed / \# Total Not Pass) x 100
+
+OZ Variables
 
 -   By 90 Days Old - Diagnose as deaf or hard of hearing (DHH)
 -   first_dx_session_date + patients_date_of_birth
 -   cdc_hearing_outcome
 
-### **EI Enrollment**
+### **Intervention Enrollment**
 
-**% EI Enrollment** = (# Total Enrolled in EI (Part C and Non-Part C) / \# Total Infants who are DHH) x 100\
-**2022**\
-- AK: 6.3%\
-- National: 40.7%
+CDC Definition
+
+**% EI Enrollment** = (# Total Enrolled in EI (Part C and Non-Part C) / \# Total Infants who are DHH) x 100
+
+OZ Variables
 
 -   By 180 Days old - Enroll in early intervention
 -   date_of_part_c_enrollment - patients_date_of_birth
@@ -50,32 +53,32 @@ From [CDC.com](https://www.cdc.gov/hearing-loss-children/data/ehdi-data.html) Fo
 -   cdc_dx_outcome
 
 ```{r}
-#| warning: false 
-#| message: false 
-#| echo: false
+#| warning: false  
+#| message: false  
+#| echo: false  
 
-library(tidyverse)               # contains packages like dplyr
-library(lubridate)               # works with modifying dates easily
-library(janitor)
-library(sf)
-library(viridis)
-library(plotly)
-library(purrr)
-library(DT)
+library(tidyverse)         # contains packages like dplyr
+library(lubridate)         # works with modifying dates easily
+library(janitor) 
+library(sf) 
+library(viridis) 
+library(plotly) 
+library(purrr) 
+library(DT)  
 
 load("//hssancconf/DPH-WCFH_Restricted/Newborn/NBHS/2023 Data/research_dataframe2023.Rda")
 ```
 
 ```{r}
-#| warning: false 
-#| message: false 
-#| echo: false
+#| warning: false  
+#| message: false  #
+#| echo: false  
 
-# // Load in HAVRS Year-To-Date file // #
-fp_vs <- file.path("R:\\ResData\\BVS MASTER FILES\\AUTHORIZED RESEARCHERS ONLY\\current\\birth_statistical.sas7bdat")
-bvs <- haven::read_sas(fp_vs) %>% 
-  filter(dob_yr == "2023", 
-         bplace_state == "ALASKA") %>%                                                 # Update Year
+# // Load in HAVRS Year-To-Date file // # 
+
+fp_vs <- file.path("R:\\ResData\\BVS MASTER FILES\\AUTHORIZED RESEARCHERS ONLY\\current\\birth_statistical.sas7bdat") 
+
+bvs <- haven::read_sas(fp_vs) %>%    filter(dob_yr == "2023",           bplace_state == "ALASKA") %>%                   # Update Year
   mutate_all(.funs = as.character) %>% # converting all column to character
   mutate(dob = ymd(dob))
 ```
@@ -239,9 +242,9 @@ birth15bb <- birth15 %>%
 ```
 
 ```{r}
-#| warning: false 
-#| message: false 
-#| echo: false
+#| warning: false  
+#| message: false  
+#| echo: false  
 
 res_data_birth <- res_data_2023_birth    # Update data
 
@@ -294,8 +297,6 @@ screen_count <- res_data_birth_2 %>%
 screen_sum <- sum(res_data_birth_2$screen_within_30_days)
 ak_birth_total <- nrow(bvs)
 prct_scrn_1mo <- round((sum(res_data_birth_2$screen_within_30_days)/nrow(bvs))*100, 2)
-
-
 ```
 
 ```{r}
@@ -339,9 +340,18 @@ ggplot(screening_data, aes(x = year, y = screening_percent)) +
   )
 ```
 
-**Total screened** - `r screen_count`
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
 
-**Total in-state Alaska births** - `r ak_birth_total`
+data.frame(
+                                  Year = 2023, 
+                                  Screened = screen_count$count_screen_within_30_days,
+                                  Births = ak_birth_total, 
+                                  Percent = prct_scrn_1mo) %>%
+  datatable(filter = "none", rownames = F,  options = list(dom = 't'), caption = "Alaska Hearing Screening Within 30-Days")
+```
 
 ```{r}
 #| warning: false 
@@ -374,7 +384,7 @@ ggplot(diagnosis_data, aes(x = year, y = diag_percent)) +
   geom_line(color = "steelblue", linewidth = 1.2) +
   geom_point(color = "steelblue", size = 3) +
   labs(
-    title = "Percent of Alaskan Newborns Diagnosed Before 3-Months of Age",
+    title = "Percent of Alaskan Infants Diagnosed Before 3-Months of Age",
     subtitle = "In state Born Diagnosis Rates: 2022-2023",     #Update
     x = "Year",
     y = "Percent Diagnosed (%)",
@@ -391,9 +401,18 @@ ggplot(diagnosis_data, aes(x = year, y = diag_percent)) +
   )
 ```
 
-**Total diagnosed before 3-months** - `r diag_sum`
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
 
-**Total In-State Alaska births who did not pass hearing screen** - `r screen_not_pass_sum`
+data.frame(
+                                  Year = 2023, 
+                                  Evaluated = diag_sum,
+                                  `Failed Screens` = screen_not_pass_sum, 
+                                  Percent = prct_diag_3mo) %>%
+  datatable(filter = "none", rownames = F,  options = list(dom = 't'), caption = "Alaska Diagnostic Evaluations Within 90-Days")
+```
 
 ```{r}
 #| warning: false 
@@ -403,7 +422,6 @@ ggplot(diagnosis_data, aes(x = year, y = diag_percent)) +
 enroll_sum <- sum(res_data_birth_2$ei_before_6m)
 dhh_sum <- sum(res_data_birth_2$dhh)
 prct_enroll_6mo <- round((sum(res_data_birth_2$ei_before_6m)/sum(res_data_birth_2$dhh))*100, 2)
-
 ```
 
 ```{r}
@@ -427,7 +445,7 @@ ggplot(enroll_data, aes(x = year, y = enroll_percent)) +
   geom_line(color = "steelblue", linewidth = 1.2) +
   geom_point(color = "steelblue", size = 3) +
   labs(
-    title = "Percent of Alaskan Newborns Enrolled Before 6-Months of Age",
+    title = "Percent of Alaskan Infants Enrolled Before 6-Months of Age",
     subtitle = "In state Born Enrollment Rates: 2022-2023",     #Update
     x = "Year",
     y = "Percent Enrolled (%)",
@@ -444,9 +462,18 @@ ggplot(enroll_data, aes(x = year, y = enroll_percent)) +
   )
 ```
 
-**Total enrolled before 6-months** - `r enroll_sum`
+```{r}
+#| warning: false 
+#| message: false 
+#| echo: false
 
-**Total In-State Alaska births diagnoesd as deaf or hear of hearing (DHH)** - `r dhh_sum`
+data.frame(
+                                  Year = 2023, 
+                                  Enrolled = enroll_sum,
+                                  DHH = dhh_sum, 
+                                  Percent = prct_enroll_6mo) %>%
+  datatable(filter = "none", rownames = F,  options = list(dom = 't'), caption = "Alaska Enrolled Intervention Within 180-Days")
+```
 
 ## Geographic Distribution
 
@@ -554,7 +581,11 @@ scrn_map <- ggplot(data = ak_sf_em,
                             "<br>Screened:", num,
                             "<br>Alaskan Born:", demon))) +
         geom_sf() +
-        viridis::scale_fill_viridis(option = "cividis", direction = -1) +
+  viridis::scale_fill_viridis(option = "mako", direction = -1,
+                               begin = 0.2, end = 0.5) +
+      # scale_fill_gradientn(colors = RColorBrewer::brewer.pal(9, "Blues")[5:7]) +
+  # viridis::scale_fill_viridis(option = "viridis", begin = 0.8, end = 1, direction = 0) +
+        # viridis::scale_fill_viridis(option = "cividis", direction = -1) +
         theme(axis.text.x = element_blank(),
               axis.text.y = element_blank(),
               axis.ticks = element_blank(),
@@ -568,7 +599,6 @@ scrn_map_ly <- ggplotly(scrn_map,
   layout(xaxis = list(autorange = TRUE),
          yaxis = list(autorange = TRUE))
 scrn_map_ly
-  
 ```
 
 ```{r}
@@ -613,11 +643,11 @@ tables_scrn30 <- map(bvs_vec, ~ {
 #| warning: false 
 #| message: false 
 #| echo: false
+
 results_scrn30 %>% 
   filter(variable_name == 'PH_REGION') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-  mutate(num = ifelse(num <= 5, "-", num)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -633,7 +663,6 @@ datatable(,
                         )),
           rownames = F, 
           colnames = c("Region", "Screened Percent", "Screened Count", "AK Births"))
-
 ```
 
 ## Demographic Variables
@@ -649,8 +678,6 @@ results_scrn30 %>%
   filter(variable_name == 'bplace') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-  mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -669,7 +696,7 @@ datatable(,
           )
 ```
 
-## Medicaid Eligible
+## Medicaid Status
 
 ```{r}
 #| warning: false 
@@ -680,8 +707,6 @@ results_scrn30 %>%
   filter(variable_name == 'eligible') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-   mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -711,8 +736,6 @@ results_scrn30 %>%
   filter(variable_name == 'M_grp') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-   mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -742,8 +765,6 @@ results_scrn30 %>%
   filter(variable_name == 'M_rce') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-   mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -773,8 +794,6 @@ results_scrn30 %>%
   filter(variable_name == 'marital_status') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-   mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -791,10 +810,9 @@ datatable(,
           rownames = F, 
           colnames = c("Marital Status", "Screened Percent", "Screened Count", "AK Births")
           )
-
 ```
 
-## Substance
+## Any Substance Use
 
 ```{r}
 #| warning: false 
@@ -805,8 +823,6 @@ results_scrn30 %>%
   filter(variable_name == 'substance') %>% 
   select(-variable_name) %>%
   mutate(percent_scrn_30_days = round(percent_scrn_30_days, 2)) %>%
-   mutate(num = ifelse(num <= 5, "-", num), 
-         demon = ifelse(demon <= 5, "-", demon)) %>%
 datatable(, 
           #container = tables_scrn30[[9]], 
           options = list(pageLength = nrow(results_scrn30),
@@ -852,7 +868,6 @@ hearing_data <- data.frame(
   Category = c(outcome_cat), 
   Count = c(outcome_count)
 )
-
 ```
 
 ```{r}
@@ -909,8 +924,8 @@ p <- ggplot(hearing_data, aes(x = 2, y = Count, fill = Short_Label)) +
     plot.subtitle = element_text(hjust = 0.5, size = 11, color = "gray60")
   ) +
   labs(
-    title = "Distribution of Hearing Diagnosis Outcomes",
-    subtitle = paste("Total Cases:", sum(hearing_data$Count))
+    title = "Distribution of Hearing Evaluation Outcomes",
+    subtitle = paste("Total Cases:", sum(hearing_data$Count), "newborns with a failed hearing screen")
   )
 
 # Display the plot
@@ -937,9 +952,7 @@ print(p)
 
 hearing_data %>%
   select(Short_Label, Count, Percentage) %>%
-   mutate(Count = ifelse(Count <= 5, "-", Count)) %>%
   datatable(data = ., rownames = FALSE)
-  
 ```
 
 ```{r}
@@ -996,11 +1009,10 @@ total_dhh <- deaf +
 
 ak_dhh10000 <- round(total_dhh/nrow(bvs)*10000, 2)
   
-
 ```
 
 ## Deaf or Hard of Hearing Prevalence
 
-Out of the `r Total` newborns with a failed hearing screen, only `r screen_results` have a known hearing evaluation. The number of newborns diagnosed as DHH after failing a hearing screen is `r deaf` (out of `r screen_results` with a hearing evaluation). The proportion of DHH among screened newborns is `r paste0(deaf_to_screen_rate, "%")` `r deaf` / `r screen_results`. The number of newborns with a failed hearing screen that do not have a diagnosis is `r screen_no_results`. The number of DHH without a documented hearing screen is `r no_screen_dhh`.
+Out of the `r Total` newborns with a failed hearing screen, only `r screen_results` have a known hearing evaluation. The number of infants diagnosed as DHH after failing a hearing screen is `r deaf` (out of `r screen_results` with a hearing evaluation). The proportion of DHH among screened infants is `r paste0(deaf_to_screen_rate, "%")` `r deaf` / `r screen_results`. The number of infants with a failed hearing screen that do not have a diagnosis is `r screen_no_results`. The number of DHH without a documented hearing screen is `r no_screen_dhh`
 
 Assuming a consistent rate of DHH among screened newborns, the prevalence estimate for DHH for the year is `r ak_dhh10000` per 10,000 live Alaskan births.
