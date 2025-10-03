@@ -10,7 +10,7 @@ editor: visual
 
 From [CDC.com](https://www.cdc.gov/hearing-loss-children/data/ehdi-data.html) Formulas for Receipt of EHDI Services
 
-![Timely EHDI surveillance Measurement](https://www.cdc.gov/hearing-loss-children/media/images/2024/08/349109-A_WEB_EHDI-Infographic_7.jpg){alt="Timely EHDI surveillance Measurement"}
+![Timely EHDI surveillance Measurement](https://www.cdc.gov/hearing-loss-children/media/images/2024/08/349109-A_WEB_EHDI-Infographic_7.jpg)
 
 ## EHDI Metrics
 
@@ -257,17 +257,21 @@ res_data_birth_2 <- res_data_birth %>%
   mutate(age_at_first_screen_days = parse_integer(as.character(age_at_first_screen_days))) %>%
 # Creating screen within 1 month boolean
   mutate(screen_within_30_days = ifelse(age_at_first_screen_days <= 30, 1, 0)) %>%
+  mutate(screen_after_30_days = ifelse(age_at_first_screen_days > 30, 1, 0)) %>%
 # Changing NA values to 0
   mutate(screen_within_30_days = ifelse(is.na(screen_within_30_days), 0, screen_within_30_days)) %>%
+  mutate(screen_after_30_days = ifelse(is.na(screen_after_30_days), 0, screen_after_30_days)) %>%
   mutate(first_dx_session_date = date(mdy(first_dx_session_date))) %>%
 # Creating screening age variable
   mutate(first_dx_session_days = (first_dx_session_date - patients_date_of_birth)) %>%
   mutate(first_dx_session_days = parse_integer(as.character(first_dx_session_days))) %>%
 # Creating diagnosed within 3 month boolean
   mutate(diagnosis_within_90_days = ifelse(first_dx_session_days <= 90, 1, 0)) %>%
+# Creating diagnosed beyond 3 month boolean
+    mutate(diagnosis_after_90_days = ifelse(first_dx_session_days > 90, 1, 0)) %>%
 # Creating a "Not Pass" boolean indicator variable
   mutate(screen_not_pass = ifelse(cdc_hearing_outcome == "Screened - Not Pass", 1, 0)) %>%
-# Creating an Early intervention boolean within 6-months boolean
+# Creating an Early intervention within 6-months boolean
   mutate(date_of_part_c_enrollment = date(mdy(date_of_part_c_enrollment)),
          date_of_non_part_c_enrollment = date(mdy(date_of_non_part_c_enrollment))) %>%
   mutate(age_at_ei_part_c_days = (date_of_part_c_enrollment - patients_date_of_birth)) %>%
@@ -276,6 +280,9 @@ res_data_birth_2 <- res_data_birth %>%
   mutate(age_at_ei_part_non_c_days = parse_integer(as.character(age_at_ei_part_non_c_days))) %>%
   mutate(ei_before_6m = ifelse(age_at_ei_part_c_days <= 180 
                                | age_at_ei_part_non_c_days <= 180, 1, 0)) %>%
+# Creating an Early intervention within 6-months boolean 
+  mutate(ei_after_6m = ifelse(age_at_ei_part_c_days > 180 
+                               | age_at_ei_part_non_c_days > 180, 1, 0)) %>%
 # Creating a DHH boolean variable
   mutate(dhh = ifelse(cdc_dx_outcome == "Diagnosis - Hearing Loss/Deaf/Hard of Hearing", 1, 0)) %>%
 # Changing NA values to 0
@@ -295,8 +302,10 @@ screen_count <- res_data_birth_2 %>%
   summarise(count_screen_within_30_days = sum(screen_within_30_days))
 
 screen_sum <- sum(res_data_birth_2$screen_within_30_days)
+screen_aft30 <- res_data_birth_2 %>% filter(age_at_first_screen_days > 30) %>% distinct(bc) %>% nrow()
 ak_birth_total <- nrow(bvs)
 prct_scrn_1mo <- round((sum(res_data_birth_2$screen_within_30_days)/nrow(bvs))*100, 2)
+prct_scrn_1_aft_1mo <- round((sum(res_data_birth_2$screen_after_30_days)/nrow(bvs))*100, 2)
 ```
 
 ```{r}
@@ -340,6 +349,8 @@ ggplot(screening_data, aes(x = year, y = screening_percent)) +
   )
 ```
 
+Count of newborns screened after 30-days: `r screen_aft30` (`r prct_scrn_1_aft_1mo`%)
+
 ```{r}
 #| warning: false 
 #| message: false 
@@ -359,8 +370,10 @@ data.frame(
 #| echo: false
 
 diag_sum <- sum(res_data_birth_2$diagnosis_within_90_days)
+diag_aftr90 <- res_data_birth_2 %>% filter(first_dx_session_days > 90) %>% distinct(bc) %>% nrow()
 screen_not_pass_sum <- sum(res_data_birth_2$screen_not_pass)
 prct_diag_3mo <- round((sum(res_data_birth_2$diagnosis_within_90_days)/sum(res_data_birth_2$screen_not_pass))*100, 2)
+prct_diag_aftr3mo <- round((diag_aftr90/sum(res_data_birth_2$screen_not_pass))*100, 2)
 ```
 
 ```{r}
@@ -401,6 +414,8 @@ ggplot(diagnosis_data, aes(x = year, y = diag_percent)) +
   )
 ```
 
+Count of infants with a diagnostic evaluation after 60-days: `r diag_aftr90`(`r prct_diag_aftr3mo`%)
+
 ```{r}
 #| warning: false 
 #| message: false 
@@ -420,8 +435,14 @@ data.frame(
 #| echo: false
 
 enroll_sum <- sum(res_data_birth_2$ei_before_6m)
+enroll_aftr180 <- res_data_birth_2 %>% 
+  filter(age_at_ei_part_c_days > 180 |
+           age_at_ei_part_non_c_days > 180) %>% 
+  distinct(bc) %>% 
+  nrow()
 dhh_sum <- sum(res_data_birth_2$dhh)
 prct_enroll_6mo <- round((sum(res_data_birth_2$ei_before_6m)/sum(res_data_birth_2$dhh))*100, 2)
+prct_enroll_aftr180 <- round((enroll_aftr180/sum(res_data_birth_2$dhh))*100, 2)
 ```
 
 ```{r}
@@ -461,6 +482,8 @@ ggplot(enroll_data, aes(x = year, y = enroll_percent)) +
     panel.grid.minor = element_blank()
   )
 ```
+
+Count of infants diagnosed as DHH enrolled in intervention services after 180-days: `r enroll_aftr180`(`r prct_enroll_aftr180`%)
 
 ```{r}
 #| warning: false 
